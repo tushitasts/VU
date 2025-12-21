@@ -14,10 +14,17 @@ CORS(app, supports_credentials=True)
 
 # --- Add a secret key for session management ---
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
-db_uri = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:23562@localhost:5432/VocationalUdaan"
-)
+# db_uri = os.getenv( 
+#     "DATABASE_URL",
+#     "postgresql://postgres:23562@localhost:5432/VocationalUdaan"
+# )
+db_uri = os.getenv("DATABASE_URL")
+
+if not db_uri:
+    raise RuntimeError("DATABASE_URL is not set")
+
+if db_uri.startswith("postgres://"):
+    db_uri = db_uri.replace("postgres://", "postgresql://", 1)
 
 # --- DATABASE CONFIGURATION ---
 #db_uri = "postgresql://postgres:23562@localhost:5432/VocationalUdaan"
