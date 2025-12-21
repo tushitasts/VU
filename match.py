@@ -183,13 +183,12 @@ def match_tracks(user_profile, db_session) -> List[Dict]:
 
     # If we derived sectors, filter using case-insensitive partial matching,
     # so 'electronics' will match 'Electronics & Hardware' etc.
-    # if sectors:
-    #     conditions = []
-    #     for s in sectors:
-    #         # Use ilike for partial matches; guard against None sector column
-    #         conditions.append(VocationalTrack.sector.ilike(f"%{s}%"))
-    #     q = q.filter(or_(*conditions))
-    tracks = db_session.query(VocationalTrack).all()
+    if sectors:
+        conditions = []
+        for s in sectors:
+            # Use ilike for partial matches; guard against None sector column
+            conditions.append(VocationalTrack.sector.ilike(f"%{s}%"))
+        q = q.filter(or_(*conditions))
 
     tracks = q.all()
     if not tracks:
