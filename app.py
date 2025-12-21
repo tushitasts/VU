@@ -18,7 +18,8 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 #     "DATABASE_URL",
 #     "postgresql://postgres:23562@localhost:5432/VocationalUdaan"
 # )
-db_uri = os.getenv("DATABASE_URL")
+# db_uri = os.getenv("DATABASE_URL")
+db_uri = os.environ.get("DATABASE_URL")
 
 if not db_uri:
     raise RuntimeError("DATABASE_URL is not set")
