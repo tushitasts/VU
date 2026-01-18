@@ -63,3 +63,5 @@ class TrainingCentre(db.Model):
     contact = db.Column(db.String(50))
     sector = db.Column(ARRAY(db.Text))   # primary sector tag
     source_url = db.Column(ARRAY(db.Text)) # comma-separated course titles
+    city=db.Column(db.Text)
+    state=db.Column(db.Text)
