@@ -3,7 +3,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import os
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 # ---------- use models.py (single source of truth) ----------
 # Make sure models.py defines: db, User, VocationalTrack, TrainingCentre, Career (if needed), CentreCourse (if needed)
@@ -207,26 +207,41 @@ def get_career_details(name):
 def match_user():
     data = request.json or {}
     selected_sectors = data.get('sectors', [])
-    location = data.get('location', '')
 
     if not selected_sectors:
         return jsonify({'error': 'Please select at least one sector.'}), 400
 
-    # centres ⟂ centre_courses ⟂ careers(VocationalTrack)
+    location = (data.get('location') or "").strip().lower()
+    parts = [p.strip() for p in location.split(",") if p.strip()]
+
+    # BASE QUERY (define q FIRST)
     q = (
         db.session.query(TrainingCentre)
         .join(CentreCourse, CentreCourse.centre_id == TrainingCentre.id)
         .join(VocationalTrack, VocationalTrack.id == CentreCourse.career_id)
         .filter(VocationalTrack.sector.in_(selected_sectors))
     )
-    if location:
-        q = q.filter(TrainingCentre.address.ilike(f"%{location}%"))
+
+    # LOCATION FILTER
+    if len(parts) == 1:
+        q = q.filter(
+            or_(
+                func.lower(TrainingCentre.city).like(f"%{parts[0]}%"),
+                func.lower(TrainingCentre.state).like(f"%{parts[0]}%"),
+                func.lower(TrainingCentre.address).like(f"%{parts[0]}%")  # fallback
+            )
+        )
+
+    elif len(parts) >= 2:
+        q = q.filter(
+            func.lower(TrainingCentre.city).like(f"%{parts[0]}%"),
+            func.lower(TrainingCentre.state).like(f"%{parts[1]}%")
+        )
 
     centres = q.distinct().all()
 
     results = []
     for centre in centres:
-        # courses from this centre that belong to selected sectors
         course_rows = (
             db.session.query(VocationalTrack.name)
             .join(CentreCourse, CentreCourse.career_id == VocationalTrack.id)
@@ -236,22 +251,21 @@ def match_user():
             )
             .all()
         )
+
         offered_courses = [r[0] for r in course_rows]
 
-        # source_url is an ARRAY(Text) in your model; pick first if present
         src = None
-        try:
-            val = getattr(centre, "source_url", None)
-            if isinstance(val, (list, tuple)) and val:
-                src = val[0]
-            elif isinstance(val, str):
-                src = val
-        except Exception:
-            pass
+        val = getattr(centre, "source_url", None)
+        if isinstance(val, (list, tuple)) and val:
+            src = val[0]
+        elif isinstance(val, str):
+            src = val
 
         results.append({
             "centre_name": centre.name,
             "address": centre.address,
+            "city": centre.city,
+            "state": centre.state,
             "contact": getattr(centre, "contact", None),
             "source_url": src,
             "offered_courses": offered_courses,
